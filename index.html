@@ -93,6 +93,40 @@
   .mfoot { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: auto; padding-top: 4px; }
 
   .empty { text-align: center; color: var(--muted); padding: 40px; }
+
+  /* Ärenden */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  .stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .stat b { display: block; font-size: 22px; line-height: 1.2; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .stat.warn b { color: var(--danger); }
+  .search { width: 220px; }
+  .tasks { display: flex; flex-direction: column; gap: 8px; }
+  .task { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+    display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: start; }
+  .task.done { opacity: .6; }
+  .task.overdue { border-color: #e7c4c1; box-shadow: 0 0 0 2px #fbeceb; }
+  .task.published { border-color: var(--brand); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .tick { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #b9c2bb; background: #fff; padding: 0; margin-top: 2px; display: grid; place-items: center; font-size: 14px; line-height: 1; color: #fff; }
+  .tick.on { background: var(--brand); border-color: var(--brand); color: #06291a; }
+  .task h4 { margin: 0; font-size: 15px; }
+  .task h4 .med { color: var(--accent); }
+  .task .line { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .task .next { font-size: 14px; margin-top: 6px; }
+  .task .next.late { color: var(--danger); font-weight: 600; }
+  .task .pub { font-size: 14px; margin-top: 6px; background: var(--accent-soft); border-radius: 6px; padding: 6px 10px; }
+  .task .pub a { color: var(--accent); font-weight: 600; word-break: break-all; }
+  .task .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .task select.st { width: auto; padding: 4px 8px; font-size: 13px; }
+  .mstats { font-size: 13px; color: var(--muted); }
+  .mstats b { color: var(--ink); }
+  .mpick { max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .mpick .g { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); font-weight: 700; margin: 8px 0 4px; }
+  .mpick label { display: flex; gap: 8px; align-items: center; font-weight: 400; font-size: 14px; margin: 3px 0; cursor: pointer; }
+  .mpick input { width: auto; }
+  fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 2px; margin: 0 0 12px; }
+  legend { font-size: 13px; font-weight: 700; padding: 0 6px; color: var(--accent); }
+  @media (max-width: 680px) { .stats { grid-template-columns: 1fr 1fr; } .task { grid-template-columns: 26px 1fr; } .task .side { grid-column: 2; align-items: flex-start; flex-direction: row; } .search { width: 100%; } }
   .notice { background: var(--sugg); border: 1px solid var(--sugg-line); padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-top: 16px; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 50; }
 
@@ -161,6 +195,7 @@
       <nav>
         <button data-view="kalender" class="on">Kalender</button>
         <button data-view="medier">Medier</button>
+        <button data-view="arenden">Ärenden</button>
       </nav>
     </div>
   </header>
@@ -202,8 +237,71 @@
       </div>
       <div id="mediaList"></div>
     </section>
+
+    <!-- Ärenden -->
+    <section id="arendenView" hidden>
+      <div class="stats" id="aStats"></div>
+      <div class="toolbar">
+        <button class="primary" id="addArende">+ Nytt ärende</button>
+        <div class="filters" id="aFilters">
+          <button data-f="oppna" class="on">Öppna</button>
+          <button data-f="mina">Mina</button>
+          <button data-f="publ">Publicerade</button>
+          <button data-f="alla">Alla</button>
+        </div>
+        <input type="search" id="aSearch" class="search" placeholder="Sök medium, ämne …">
+        <div class="spacer"></div>
+        <span class="state"></span>
+        <button class="reload">Uppdatera</button>
+      </div>
+      <div id="arendeList"></div>
+    </section>
   </main>
 </div>
+
+<!-- Dialog: ärende -->
+<dialog id="arendeDlg">
+  <form id="arendeForm">
+    <h2 id="arendeTitle">Nytt ärende</h2>
+    <input type="hidden" name="id">
+    <div class="field" id="mpickField"><label>Medier <small>(ett ärende skapas per medium)</small></label>
+      <div class="mpick" id="mpick"></div></div>
+    <div class="field" id="mOneField" hidden><label>Medium</label><select name="medium" id="mOne"></select></div>
+    <div class="grid2">
+      <div class="field"><label>Datum</label><input type="date" name="datum" required></div>
+      <div class="field"><label>Kanal</label>
+        <select name="kanal"><option>Mejl</option><option>Telefon</option><option>Möte</option><option>LinkedIn</option><option>Pressmeddelande</option><option>Annat</option></select></div>
+    </div>
+    <div class="field"><label>Ämne / utspel</label><input name="amne" list="amneList" placeholder="T.ex. Logistik & Transport-mässan" required>
+      <datalist id="amneList"></datalist></div>
+    <div class="grid2">
+      <div class="field"><label>Ansvarig</label><input name="ansvarig" required></div>
+      <div class="field"><label>Status</label>
+        <select name="status"><option>Att göra</option><option>Kontaktad</option><option>Intresse</option><option>Publicerad</option><option>Nej tack</option><option>Avslutad</option></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Nästa steg</label><input name="nastaSteg" placeholder="T.ex. Ringa upp"></div>
+      <div class="field"><label>Senast</label><input type="date" name="nastaDatum"></div>
+    </div>
+    <div class="field"><label>Kommentar</label><textarea name="kommentar" rows="2" placeholder="Vad sades, vem var kontakten …"></textarea></div>
+    <fieldset>
+      <legend>Publicering</legend>
+      <div class="grid2">
+        <div class="field"><label>Publiceringsdatum</label><input type="date" name="pubDatum"></div>
+        <div class="field"><label>Typ</label>
+          <select name="pubTyp"><option value=""></option><option>Nyhet</option><option>Intervju</option><option>Krönika/debatt</option><option>Omnämnande</option><option>Poddavsnitt</option><option>Annat</option></select></div>
+      </div>
+      <div class="field"><label>Rubrik</label><input name="pubRubrik"></div>
+      <div class="field"><label>Länk</label><input type="text" inputmode="url" name="pubLank" placeholder="https://…"></div>
+    </fieldset>
+    <div class="actions">
+      <button type="button" class="danger" id="arendeDel">Ta bort</button>
+      <div class="spacer"></div>
+      <button type="button" data-close>Avbryt</button>
+      <button type="submit" class="primary">Spara</button>
+    </div>
+  </form>
+</dialog>
 
 <!-- Dialog: kalenderaktivitet -->
 <dialog id="eventDlg">
@@ -295,7 +393,10 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
 let password = '';
-let data = { kalender: [], medier: [] };
+let data = { kalender: [], medier: [], arenden: [] };
+let aFilter = 'oppna';
+const ARENDE_FIELDS = ['id','datum','medium','kanal','amne','ansvarig','status','nastaSteg','nastaDatum','kommentar','pubDatum','pubTyp','pubRubrik','pubLank'];
+const CLOSED = ['Publicerad','Nej tack','Avslutad'];
 let mFilter = 'alla';
 
 const store = {
@@ -330,6 +431,7 @@ async function api(payload) {
   if (!d.ok) { const err = new Error(d.message || 'Något gick fel'); err.code = d.error; throw err; }
   data.kalender = d.kalender || [];
   data.medier = d.medier || [];
+  data.arenden = d.arenden || [];
   renderAll();
   return d;
 }
@@ -364,7 +466,7 @@ async function login(pw, silent) {
     store.set('lgv_pw', pw);
     $('#loginView').hidden = true; $('#appView').hidden = false;
     setState('Uppdaterad ' + new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }));
-    showView(location.hash === '#medier' ? 'medier' : 'kalender');
+    showView(['#medier','#arenden'].includes(location.hash) ? location.hash.slice(1) : 'kalender');
   } catch (e) {
     password = ''; store.set('lgv_pw', '');
     if (!silent) $('#loginErr').textContent = e.message;
@@ -375,8 +477,8 @@ async function login(pw, silent) {
 
 function logout(msg) {
   password = ''; store.set('lgv_pw', '');
-  data = { kalender: [], medier: [] };
-  $('#eventList').innerHTML = ''; $('#mediaList').innerHTML = '';
+  data = { kalender: [], medier: [], arenden: [] };
+  $('#eventList').innerHTML = ''; $('#mediaList').innerHTML = ''; $('#arendeList').innerHTML = ''; $('#aStats').innerHTML = '';
   $$('dialog').forEach(d => d.open && d.close());
   $('#appView').hidden = true; $('#loginView').hidden = false;
   $('#pwInput').value = ''; $('#loginErr').textContent = msg || '';
@@ -389,12 +491,16 @@ function showView(v) {
   $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
   $('#kalenderView').hidden = v !== 'kalender';
   $('#medierView').hidden = v !== 'medier';
-  $('#pageTitle').textContent = v === 'medier' ? 'Mediekartläggning' : 'Redaktionell kalender';
-  $('#pageSub').textContent = v === 'medier' ? 'Målmedier i nivå A, B och C – föreslå ändringar direkt i listan' : 'Förslag oktober 2026 – juli 2027';
-  history.replaceState(null, '', v === 'medier' ? '#medier' : '#kalender');
+  $('#arendenView').hidden = v !== 'arenden';
+  const T = { kalender: ['Redaktionell kalender', 'Förslag oktober 2026 – juli 2027'],
+    medier: ['Mediekartläggning', 'Målmedier i nivå A, B och C – föreslå ändringar direkt i listan'],
+    arenden: ['Ärenden', 'Vilka medier vi bearbetat, med vad och när – och vad det gav'] }[v];
+  $('#pageTitle').textContent = T[0];
+  $('#pageSub').textContent = T[1];
+  history.replaceState(null, '', '#' + v);
 }
 
-function renderAll() { renderEvents(); renderMedia(); }
+function renderAll() { renderEvents(); renderMedia(); renderArenden(); }
 
 function renderEvents() {
   const showPast = $('#showPast').checked;
@@ -459,6 +565,8 @@ function renderMedia() {
             ${m.prio && m.prio.trim().length > 1 ? `<div class="prio-full">${esc(m.prio.trim().slice(1).trim())}</div>` : ''}
           </div>
         </div>
+        ${(() => { const a = data.arenden.filter(x => x.medium === m.id); const p = a.filter(x => x.pubDatum || x.pubLank || x.status === 'Publicerad'); const last = a.map(x => x.datum).sort().pop();
+          return a.length ? `<div class="mstats"><b>${a.length}</b> ärende${a.length > 1 ? 'n' : ''} · <b>${p.length}</b> publicering${p.length === 1 ? '' : 'ar'}${last ? ' · senast ' + esc(last) : ''}</div>` : ''; })()}
         ${mails.length ? `<details class="mail"><summary>${mails.length} e-postadress${mails.length > 1 ? 'er' : ''}</summary><ul>${mails.map(e => `<li>${esc(e)}</li>`).join('')}</ul></details>` : ''}
         ${m.forslag ? `<div class="sugg">
             <b>${esc(m.foreslagenAv || 'Någon')}</b> föreslår: <b>${m.forslag === 'Ta bort' ? 'ta bort ur listan' : 'kategori ' + esc(m.forslag)}</b>
@@ -469,6 +577,7 @@ function renderMedia() {
             </div>
           </div>` : ''}
         <div class="mfoot">
+          <button class="small" data-new-arende="${esc(m.id)}">+ Ärende</button>
           <button class="small" data-suggest="${esc(m.id)}">Föreslå kategori</button>
           ${mails.length ? `<button class="small" data-copy="${esc(m.id)}">Kopiera e-post</button>` : ''}
           <button class="link" data-edit-media="${esc(m.id)}" style="margin-left:auto">Redigera</button>
@@ -555,7 +664,8 @@ $('#eventList').addEventListener('click', e => {
 $('#mediaList').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const d = b.dataset;
-  if (d.suggest) openSuggest(findMedia(d.suggest));
+  if (d.newArende) openArende(null, d.newArende);
+  else if (d.suggest) openSuggest(findMedia(d.suggest));
   else if (d.editMedia) openMedia(findMedia(d.editMedia));
   else if (d.copy) { const m = findMedia(d.copy); copyText(emailsOf(m).join(', '), `Adresser för ${m.medium} kopierade`); }
   else if (d.accept) {
@@ -610,6 +720,138 @@ $('#suggForm').addEventListener('submit', e => {
   $('#suggDlg').close();
   run({ action: 'save', table: 'medier', item }, 'Förslaget är sparat');
 });
+
+// ---------- Ärenden ----------
+
+const mediaName = id => { const m = findMedia(id); return m ? m.medium : (id || '–'); };
+const myName = () => store.getLocal('lgv_name');
+
+function renderArenden() {
+  const today = todayIso();
+  const A = data.arenden;
+  const open = A.filter(a => !CLOSED.includes(a.status));
+  const late = open.filter(a => a.nastaDatum && a.nastaDatum < today);
+  const pubs = A.filter(a => a.pubDatum || a.pubLank || a.status === 'Publicerad');
+  const touched = new Set(A.map(a => a.medium)).size;
+  $('#aStats').innerHTML = `
+    <div class="stat"><b>${open.length}</b><span>öppna ärenden</span></div>
+    <div class="stat ${late.length ? 'warn' : ''}"><b>${late.length}</b><span>försenade</span></div>
+    <div class="stat"><b>${pubs.length}</b><span>publiceringar</span></div>
+    <div class="stat"><b>${touched}/${data.medier.length}</b><span>medier bearbetade</span></div>`;
+
+  const q = ($('#aSearch').value || '').trim().toLowerCase();
+  const me = myName().toLowerCase();
+  let list = A.filter(a => {
+    if (aFilter === 'oppna' && CLOSED.includes(a.status)) return false;
+    if (aFilter === 'publ' && !(a.pubDatum || a.pubLank || a.status === 'Publicerad')) return false;
+    if (aFilter === 'mina' && (!me || String(a.ansvarig).toLowerCase() !== me)) return false;
+    if (q && ![mediaName(a.medium), a.amne, a.ansvarig, a.kommentar, a.pubRubrik].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const key = a => aFilter === 'oppna' ? (a.nastaDatum || '9999') + a.datum : a.datum;
+  list.sort((x, y) => aFilter === 'oppna' ? key(x).localeCompare(key(y)) : key(y).localeCompare(key(x)));
+
+  if (aFilter === 'mina' && !me) { $('#arendeList').innerHTML = '<div class="empty">Ange ditt namn i ett ärende först, så vet sidan vem du är.</div>'; return; }
+  const statuses = ['Att göra','Kontaktad','Intresse','Publicerad','Nej tack','Avslutad'];
+  $('#arendeList').innerHTML = list.length ? '<div class="tasks">' + list.map(a => {
+    const closed = CLOSED.includes(a.status);
+    const isLate = !closed && a.nastaDatum && a.nastaDatum < today;
+    const isPub = a.pubDatum || a.pubLank || a.status === 'Publicerad';
+    return `<article class="task ${closed ? 'done' : ''} ${isLate ? 'overdue' : ''} ${isPub ? 'published' : ''}">
+      <button class="tick ${closed ? 'on' : ''}" data-tick="${esc(a.id)}" title="${closed ? 'Öppna igen' : 'Bocka av som avslutad'}">${closed ? '✓' : ''}</button>
+      <div>
+        <h4><span class="med">${esc(mediaName(a.medium))}</span> – ${esc(a.amne)}</h4>
+        <div class="line">${esc(a.datum)} · ${esc(a.kanal)} · ${esc(a.ansvarig)}</div>
+        ${!closed && (a.nastaSteg || a.nastaDatum) ? `<div class="next ${isLate ? 'late' : ''}">→ ${esc(a.nastaSteg || 'Följ upp')}${a.nastaDatum ? ' senast ' + esc(a.nastaDatum) : ''}</div>` : ''}
+        ${a.kommentar ? `<div class="note">${esc(a.kommentar)}</div>` : ''}
+        ${isPub && (a.pubRubrik || a.pubLank || a.pubDatum) ? `<div class="pub">📰 ${a.pubDatum ? esc(a.pubDatum) + ' · ' : ''}${a.pubTyp ? esc(a.pubTyp) + ' · ' : ''}${a.pubLank && /^https?:\/\//i.test(a.pubLank) ? `<a href="${esc(a.pubLank)}" target="_blank" rel="noopener">${esc(a.pubRubrik || a.pubLank)}</a>` : esc(a.pubRubrik)}</div>` : ''}
+      </div>
+      <div class="side">
+        <select class="st" data-status="${esc(a.id)}">${statuses.map(s => `<option ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+        <button class="link" data-edit-arende="${esc(a.id)}">Redigera</button>
+      </div>
+    </article>`;
+  }).join('') + '</div>' : '<div class="empty">Inga ärenden att visa.</div>';
+}
+
+function buildMediaPicker(selected) {
+  const groups = [];
+  data.medier.forEach(m => { const g = m.grupp || 'Övriga'; if (!groups.includes(g)) groups.push(g); });
+  const sorted = data.medier.slice().sort((a, b) => letterOf(a.prio).localeCompare(letterOf(b.prio)) || String(a.medium).localeCompare(String(b.medium), 'sv'));
+  $('#mpick').innerHTML = groups.map(g => `<div class="g">${esc(g)}</div>` + sorted.filter(m => (m.grupp || 'Övriga') === g).map(m =>
+    `<label><input type="checkbox" value="${esc(m.id)}" ${selected.includes(m.id) ? 'checked' : ''}> <span class="prio ${letterOf(m.prio)}" style="min-width:22px;height:22px;font-size:12px">${letterOf(m.prio) === 'X' ? '?' : letterOf(m.prio)}</span> ${esc(m.medium)}</label>`).join('')).join('');
+  $('#mOne').innerHTML = sorted.map(m => `<option value="${esc(m.id)}">${esc(m.medium)}</option>`).join('');
+}
+
+function openArende(a, mediumId) {
+  const f = $('#arendeForm');
+  f.reset();
+  buildMediaPicker(mediumId ? [mediumId] : []);
+  const amnen = Array.from(new Set(data.arenden.map(x => x.amne).concat(data.kalender.map(k => String(k.aktivitet).split(/[:.?]/)[0].trim())).filter(Boolean)));
+  $('#amneList').innerHTML = amnen.map(s => `<option value="${esc(s)}">`).join('');
+  if (a) {
+    ARENDE_FIELDS.forEach(k => { if (f.elements[k]) f.elements[k].value = a[k] || ''; });
+  } else {
+    f.elements.datum.value = todayIso();
+    f.elements.ansvarig.value = myName();
+    f.elements.status.value = 'Kontaktad';
+    f.elements.kanal.value = 'Mejl';
+  }
+  $('#mpickField').hidden = !!a;
+  $('#mOneField').hidden = !a;
+  $('#arendeTitle').textContent = a ? 'Redigera ärende' : 'Nytt ärende';
+  $('#arendeDel').hidden = !a;
+  $('#arendeDlg').showModal();
+}
+
+$('#addArende').onclick = () => openArende(null);
+$('#aSearch').addEventListener('input', renderArenden);
+$('#aFilters').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  aFilter = b.dataset.f;
+  $$('#aFilters button').forEach(x => x.classList.toggle('on', x === b));
+  renderArenden();
+});
+
+$('#arendeList').addEventListener('click', e => {
+  const t = e.target.closest('[data-tick]');
+  const ed = e.target.closest('[data-edit-arende]');
+  if (t) {
+    const a = data.arenden.find(x => x.id === t.dataset.tick);
+    const closed = CLOSED.includes(a.status);
+    run({ action: 'save', table: 'arenden', item: Object.assign({}, a, { status: closed ? 'Kontaktad' : 'Avslutad' }) }, closed ? 'Ärendet öppnat igen' : 'Avbockat');
+  } else if (ed) openArende(data.arenden.find(x => x.id === ed.dataset.editArende));
+});
+$('#arendeList').addEventListener('change', e => {
+  const s = e.target.closest('[data-status]'); if (!s) return;
+  const a = data.arenden.find(x => x.id === s.dataset.status);
+  const item = Object.assign({}, a, { status: s.value });
+  if (s.value === 'Publicerad' && !item.pubDatum) item.pubDatum = todayIso();
+  run({ action: 'save', table: 'arenden', item }, 'Status: ' + s.value);
+});
+
+$('#arendeForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  const base = {};
+  ARENDE_FIELDS.forEach(k => { if (f.elements[k]) base[k] = String(f.elements[k].value || '').trim(); });
+  if (base.pubLank && !/^https?:\/\//i.test(base.pubLank)) base.pubLank = 'https://' + base.pubLank;
+  if ((base.pubLank || base.pubRubrik) && !base.pubDatum) base.pubDatum = base.datum;
+  store.setLocal('lgv_name', base.ansvarig);
+  if (base.id) {
+    $('#arendeDlg').close();
+    return run({ action: 'save', table: 'arenden', item: base }, 'Ärendet sparat');
+  }
+  const ids = $$('#mpick input:checked').map(i => i.value);
+  if (!ids.length) { alert('Välj minst ett medium.'); return; }
+  $('#arendeDlg').close();
+  run({ action: 'saveMany', table: 'arenden', items: ids.map(id => Object.assign({}, base, { id: '', medium: id })) },
+      ids.length > 1 ? `${ids.length} ärenden skapade` : 'Ärendet skapat');
+});
+$('#arendeDel').onclick = () => {
+  const id = $('#arendeForm').elements.id.value;
+  if (id && confirm('Ta bort ärendet?')) { $('#arendeDlg').close(); run({ action: 'delete', table: 'arenden', id }); }
+};
 
 // Logga in automatiskt om lösenordet redan angetts i den här fliken
 const saved = store.get('lgv_pw');
